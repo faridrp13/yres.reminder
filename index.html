@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YRES • Yura Reminder System</title>
+  <link rel="icon" type="image/png" href="logo-icon.png">
+  
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#312e81',
+            },
+            google: {
+              blue: '#1a73e8',
+              hover: '#1557b0'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- SheetJS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* Glassmorphism */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .dark .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2.5 pointer-events-none"></div>
+
+  <!-- Google Messages Assistant Modal -->
+  <div id="google-messages-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 transition-all">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-lg w-full overflow-hidden transform transition-all scale-95 opacity-0 duration-200" id="gm-modal-card">
+      
+      <!-- Modal Header -->
+      <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 text-white flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center text-white shadow-inner text-lg">
+            <i class="fa-solid fa-comment-dots"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-sm tracking-wide">Kirim via Google Messages</h3>
+            <p class="text-xs text-blue-100 font-medium" id="gm-customer-name">Budi Santoso</p>
+          </div>
+        </div>
+        <button onclick="closeGoogleMessagesModal()" class="w-8 h-8 rounded-full hover:bg-white/20 flex items-center justify-center text-white transition">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 space-y-4">
+        
+        <!-- Info Banner -->
+        <div class="bg-blue-50 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/50 rounded-2xl p-3.5 text-xs text-blue-800 dark:text-blue-300 flex items-start gap-2.5">
+          <i class="fa-solid fa-circle-info text-blue-600 dark:text-blue-400 text-sm mt-0.5 shrink-0"></i>
+          <div>
+            <p class="font-semibold">Pesan & nomor telah disalin otomatis!</p>
+            <p class="text-[11px] text-blue-700/80 dark:text-blue-300/80 mt-0.5">
+              Jika menggunakan laptop, buka <strong>Google Messages Web</strong> lalu tempel (Paste) teks pesan.
+            </p>
+          </div>
+        </div>
+
+        <!-- Target Info Box -->
+        <div class="bg-slate-50 dark:bg-slate-950 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 space-y-2.5">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-slate-400 font-medium">Nomor Handphone:</span>
+            <div class="flex items-center gap-2">
+              <span class="font-mono font-bold text-slate-700 dark:text-slate-200" id="gm-phone-display">081234567890</span>
+              <button onclick="copyGMPhone()" class="px-2 py-0.5 rounded-lg bg-slate-200 dark:bg-slate-800 text-[10px] font-semibold hover:bg-slate-300 transition">
+                <i class="fa-regular fa-copy"></i> Salin
+              </button>
+            </div>
+          </div>
+          
+          <div class="pt-2 border-t border-slate-200/60 dark:border-slate-800/80">
+            <span class="text-slate-400 text-[11px] font-medium block mb-1">Isi Pesan Tagihan:</span>
+            <p id="gm-message-display" class="text-xs text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 leading-relaxed font-sans max-h-24 overflow-y-auto">
+              Halo Budi...
+            </p>
+          </div>
+        </div>
+
+        <!-- Action Choice Buttons -->
+        <div class="space-y-2 pt-1">
+          <a id="gm-open-web-btn" href="https://messages.google.com/web" target="_blank" onclick="handleGMWebClick()" class="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 transition active:scale-95">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> Buka Google Messages Web
+          </a>
+
+          <a id="gm-open-native-btn" href="#" onclick="handleGMNativeClick()" class="w-full py-2.5 px-4 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-center gap-2 transition">
+            <i class="fa-solid fa-mobile-screen-button"></i> Buka Aplikasi Bawaan HP / Windows Link (sms:)
+          </a>
+        </div>
+
+      </div>
+
+      <!-- Footer Info -->
+      <div class="px-6 py-3 bg-slate-50 dark:bg-slate-950/70 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+        <span>Belum pair? Sambungkan di HP Anda</span>
+        <button onclick="openPairGuideModal()" class="text-blue-600 dark:text-blue-400 font-semibold hover:underline">
+          Lihat Cara Pairing
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal Panduan Pairing Google Messages -->
+  <div id="pair-guide-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 transition-all">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full overflow-hidden p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+        <h3 class="font-bold text-sm flex items-center gap-2 text-slate-800 dark:text-slate-100">
+          <i class="fa-solid fa-qrcode text-blue-600"></i> Cara Sambungkan Google Messages ke Laptop
+        </h3>
+        <button onclick="closePairGuideModal()" class="text-slate-400 hover:text-slate-600">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+        <div class="flex gap-3 items-start">
+          <div class="w-5 h-5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">1</div>
+          <p>Buka aplikasi <strong>Pesan (Google Messages)</strong> di HP Android Anda.</p>
+        </div>
+        <div class="flex gap-3 items-start">
+          <div class="w-5 h-5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">2</div>
+          <p>Ketuk <strong>foto profil</strong> atau menu titik tiga di kanan atas, lalu pilih <strong>Penyambungan Perangkat (Device Pairing)</strong>.</p>
+        </div>
+        <div class="flex gap-3 items-start">
+          <div class="w-5 h-5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">3</div>
+          <p>Buka <a href="https://messages.google.com/web" target="_blank" class="text-blue-600 underline font-semibold">messages.google.com/web</a> di browser laptop, lalu scan kode QR menggunakan kamera HP Anda.</p>
+        </div>
+        <div class="flex gap-3 items-start">
+          <div class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5"><i class="fa-solid fa-check text-[10px]"></i></div>
+          <p class="font-semibold text-emerald-600 dark:text-emerald-400">Selesai! Sekarang semua SMS & RCS bisa dikirim langsung dari laptop Anda.</p>
+        </div>
+      </div>
+
+      <div class="pt-2">
+        <button onclick="closePairGuideModal()" class="w-full py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs">
+          Saya Mengerti
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WhatsApp Chat Preview Modal -->
+  <div id="preview-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 transition-all">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full overflow-hidden transform transition-all scale-95 opacity-0 duration-200" id="preview-modal-card">
+      <div class="bg-emerald-600 dark:bg-emerald-700 px-5 py-4 text-white flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-white shadow-inner">
+            <i class="fa-brands fa-whatsapp text-xl"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-sm tracking-wide">Pratinjau Pesan WhatsApp</h3>
+            <p class="text-xs text-emerald-100 font-medium" id="preview-customer-name">Budi Santoso</p>
+          </div>
+        </div>
+        <button onclick="closePreviewModal()" class="w-8 h-8 rounded-full hover:bg-white/20 flex items-center justify-center text-white transition">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <div class="p-5 bg-[#eae6df] dark:bg-slate-950 min-h-[180px] flex flex-col justify-end">
+        <div class="bg-white dark:bg-[#005c4b] dark:text-white rounded-2xl rounded-tl-sm p-4 shadow-sm text-xs leading-relaxed relative max-w-[90%]">
+          <p id="preview-message-body" class="whitespace-pre-line text-slate-700 dark:text-slate-100">Halo Budi...</p>
+          <div class="flex items-center justify-end gap-1 mt-2 text-[10px] text-slate-400 dark:text-emerald-200">
+            <span id="preview-time">10:45</span>
+            <i class="fa-solid fa-check-double text-blue-500 dark:text-emerald-300"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
+        <button onclick="copyPreviewText()" class="flex-1 py-2.5 px-4 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold flex items-center justify-center gap-2 transition">
+          <i class="fa-regular fa-copy"></i> Salin Teks
+        </button>
+        <a id="preview-send-btn" href="#" target="_blank" class="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition active:scale-95">
+          <i class="fa-brands fa-whatsapp"></i> Buka WhatsApp
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navbar -->
+  <header class="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Brand Logo -->
+      <div class="flex items-center gap-3">
+        <div class="flex items-center">
+          <!-- Light Mode: navy text logo -->
+          <img src="logo-light.png" alt="YURA Reminder System" class="h-10 sm:h-11 w-auto object-contain block dark:hidden transition-all hover:opacity-90" />
+          <!-- Dark Mode: white text logo -->
+          <img src="logo-clean.png" alt="YURA Reminder System" class="h-10 sm:h-11 w-auto object-contain hidden dark:block transition-all hover:opacity-90" />
+        </div>
+        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-50 text-brand-700 dark:bg-brand-900/50 dark:text-brand-300 border border-brand-200 dark:border-brand-800 self-center hidden sm:inline-block">v2.1 Pro</span>
+      </div>
+
+      <!-- Quick Actions, Google Messages Web Link & Theme Toggle -->
+      <div class="flex items-center gap-2">
+        
+        <!-- Direct Button to Google Messages Web -->
+        <a href="https://messages.google.com/web" target="_blank" title="Buka Tab Google Messages Web" class="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition shadow-sm">
+          <i class="fa-solid fa-comment-dots text-blue-600"></i> Google Messages Web
+        </a>
+
+        <button onclick="loadSampleData()" class="hidden md:inline-flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition">
+          <i class="fa-solid fa-wand-magic-sparkles text-amber-500"></i> Data Contoh
+        </button>
+
+        <button onclick="downloadTemplateExcel()" class="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          <i class="fa-solid fa-file-excel text-emerald-600"></i> <span class="hidden md:inline">Unduh</span> Template
+        </button>
+
+        <!-- Dark Mode Toggle Button -->
+        <button onclick="toggleDarkMode()" id="dark-toggle" title="Toggle Tema" class="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          <i class="fa-solid fa-moon text-sm dark:hidden"></i>
+          <i class="fa-solid fa-sun text-sm hidden dark:block text-amber-400"></i>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6 flex-1">
+    
+    <!-- Top KPI Cards with Financial Stats -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      
+      <!-- Card 1: Total Pelanggan -->
+      <div class="glass-card bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:border-brand-500/50 transition">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total Pelanggan</p>
+            <h3 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1 tracking-tight" id="total-peserta">0</h3>
+          </div>
+          <div class="w-11 h-11 rounded-2xl bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-users"></i>
+          </div>
+        </div>
+        <div class="mt-3 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+          <i class="fa-solid fa-database text-[10px]"></i> <span id="kpi-total-sub">Belum ada file dimuat</span>
+        </div>
+      </div>
+
+      <!-- Card 2: Sudah Selesai -->
+      <div class="glass-card bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:border-emerald-500/50 transition">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Sudah Selesai</p>
+            <h3 class="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1 tracking-tight" id="total-selesai">0</h3>
+          </div>
+          <div class="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-circle-check"></i>
+          </div>
+        </div>
+        <div class="mt-3 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+          <i class="fa-solid fa-money-bill-wave text-[10px]"></i> <span id="nominal-selesai">Rp 0</span>
+        </div>
+      </div>
+
+      <!-- Card 3: Belum Selesai -->
+      <div class="glass-card bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:border-amber-500/50 transition">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Belum Selesai</p>
+            <h3 class="text-2xl sm:text-3xl font-extrabold text-amber-600 dark:text-amber-400 mt-1 tracking-tight" id="total-belum">0</h3>
+          </div>
+          <div class="w-11 h-11 rounded-2xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+          </div>
+        </div>
+        <div class="mt-3 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 font-medium">
+          <i class="fa-solid fa-receipt text-[10px]"></i> <span id="nominal-belum">Rp 0</span>
+        </div>
+      </div>
+
+      <!-- Card 4: Persentase Penyelesaian -->
+      <div class="glass-card bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:border-indigo-500/50 transition flex flex-col justify-between">
+        <div>
+          <div class="flex justify-between items-center">
+            <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Progress Reminder</p>
+            <span class="text-sm font-extrabold text-indigo-600 dark:text-indigo-400" id="progress-percent">0%</span>
+          </div>
+          <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 mt-3 overflow-hidden">
+            <div id="progress-bar" class="bg-gradient-to-r from-brand-600 to-emerald-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-3 font-medium">Berdasarkan status pelunasan</p>
+      </div>
+
+    </div>
+
+    <!-- Drag & Drop Upload Zone & Tools Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- Excel Dropzone (2 cols on large screen) -->
+      <div class="lg:col-span-2 glass-card bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <h2 class="text-sm font-bold tracking-tight">Unggah Spreadsheet Tagihan</h2>
+            </div>
+            <span class="text-[11px] text-slate-400 font-mono">Format: .xlsx / .xls</span>
+          </div>
+
+          <!-- Drop Area -->
+          <div id="drop-area" class="border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-brand-500 dark:hover:border-brand-500 rounded-2xl p-6 text-center transition cursor-pointer bg-slate-50/50 dark:bg-slate-900/50 group" onclick="document.getElementById('excel-file').click()">
+            <input type="file" id="excel-file" accept=".xlsx, .xls" class="hidden" onchange="prosesExcel()" />
+            <div class="w-12 h-12 rounded-2xl bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 flex items-center justify-center mx-auto text-xl mb-3 group-hover:scale-110 transition">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+            </div>
+            <p class="text-xs font-semibold text-slate-700 dark:text-slate-200">
+              Klik untuk memilih berkas atau <span class="text-brand-600 dark:text-brand-400 underline decoration-2">seret file ke sini</span>
+            </p>
+            <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Kolom wajib: No_Kartu, Nama, No_HP, Nominal</p>
+          </div>
+        </div>
+
+        <!-- File Upload Status / Control Bar -->
+        <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2 text-xs">
+            <i class="fa-solid fa-file-circle-check text-slate-400 text-sm"></i>
+            <span id="file-info" class="font-medium text-slate-600 dark:text-slate-400">Belum ada file aktif</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="downloadHasil()" class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition shadow-sm flex items-center gap-1.5">
+              <i class="fa-solid fa-download"></i> Ekspor Data
+            </button>
+            <button onclick="resetData()" class="px-3 py-2 text-xs font-semibold rounded-xl text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 transition flex items-center gap-1.5">
+              <i class="fa-solid fa-trash-can"></i> Kosongkan
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Template Settings (1 col on large screen) -->
+      <div class="glass-card bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-bold flex items-center gap-2">
+              <i class="fa-solid fa-message text-brand-600"></i> Template Pesan
+            </h2>
+            <button onclick="resetTemplateDefault()" title="Reset ke Template Default" class="text-[11px] text-slate-400 hover:text-brand-600 transition">
+              <i class="fa-solid fa-rotate-left"></i> Reset
+            </button>
+          </div>
+          
+          <p class="text-[11px] text-slate-400 dark:text-slate-500 mb-2">
+            Tag variabel: 
+            <button onclick="insertTag('{nama}')" class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono text-[10px] text-brand-600 hover:bg-brand-50 transition">{nama}</button>
+            <button onclick="insertTag('{noKartu}')" class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono text-[10px] text-brand-600 hover:bg-brand-50 transition">{noKartu}</button>
+            <button onclick="insertTag('{nominal}')" class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono text-[10px] text-brand-600 hover:bg-brand-50 transition">{nominal}</button>
+          </p>
+
+          <textarea id="custom-message-template" rows="4" class="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-brand-500 leading-relaxed text-slate-700 dark:text-slate-200 transition" oninput="saveTemplate()"></textarea>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+          <span>Otomatis disimpan</span>
+          <button onclick="openPairGuideModal()" class="text-blue-600 dark:text-blue-400 font-semibold hover:underline flex items-center gap-1">
+            <i class="fa-solid fa-circle-question"></i> Panduan Google Messages
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Table Section with Filters and Bulk Actions -->
+    <div class="glass-card bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+      
+      <!-- Table Controls Bar -->
+      <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        
+        <!-- Filter Tabs -->
+        <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl w-fit">
+          <button onclick="setFilter('ALL')" id="tab-ALL" class="filter-tab px-3.5 py-1.5 rounded-xl text-xs font-bold transition bg-white dark:bg-slate-900 shadow-sm text-slate-800 dark:text-white">
+            Semua <span id="badge-all" class="ml-1 text-[10px] px-1.5 py-0.2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500">0</span>
+          </button>
+          <button onclick="setFilter('Belum')" id="tab-Belum" class="filter-tab px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">
+            Belum Selesai <span id="badge-belum" class="ml-1 text-[10px] px-1.5 py-0.2 bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 rounded-full">0</span>
+          </button>
+          <button onclick="setFilter('Selesai')" id="tab-Selesai" class="filter-tab px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">
+            Selesai <span id="badge-selesai" class="ml-1 text-[10px] px-1.5 py-0.2 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 rounded-full">0</span>
+          </button>
+        </div>
+
+        <!-- Search & Bulk Mark -->
+        <div class="flex flex-wrap items-center gap-3">
+          <!-- Search Input -->
+          <div class="relative w-full sm:w-64">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+            <input type="text" id="search-input" oninput="renderTable()" placeholder="Cari nama, kartu, nomor..." class="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 transition" />
+            <button onclick="clearSearch()" id="clear-search-btn" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 hidden text-xs">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <!-- Bulk Mark Done -->
+          <button onclick="markAllCompleted()" class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-check-double"></i> Tandai Semua Selesai
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Modern Responsive Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-50/70 dark:bg-slate-950/70 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-100 dark:border-slate-800">
+              <th class="py-3.5 px-4 text-center w-12">#</th>
+              <th class="py-3.5 px-4">Nama Pelanggan</th>
+              <th class="py-3.5 px-4 font-mono">No. Kartu</th>
+              <th class="py-3.5 px-4 font-mono">No. HP</th>
+              <th class="py-3.5 px-4 text-right">Nominal Tagihan</th>
+              <th class="py-3.5 px-4 text-center">Status</th>
+              <th class="py-3.5 px-6 text-center">Tindakan Pengingat</th>
+            </tr>
+          </thead>
+          <tbody id="table-body" class="divide-y divide-slate-100 dark:divide-slate-800/80">
+            <!-- Dynamic rows will render here -->
+            <tr>
+              <td colspan="7" class="text-center py-16 text-slate-400 dark:text-slate-500">
+                <div class="flex flex-col items-center justify-center gap-3">
+                  <div class="w-14 h-14 rounded-3xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-2xl text-slate-400">
+                    <i class="fa-solid fa-folder-open"></i>
+                  </div>
+                  <div>
+                    <p class="font-bold text-slate-600 dark:text-slate-300">Belum Ada Data Tagihan</p>
+                    <p class="text-xs text-slate-400 mt-0.5">Silakan seret file Excel atau klik tombol <strong class="text-brand-600 cursor-pointer" onclick="loadSampleData()">"Data Contoh"</strong></p>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Table Footer / Pagination Info -->
+      <div class="p-4 bg-slate-50/50 dark:bg-slate-950/50 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+        <span id="row-count-info">Menampilkan 0 dari 0 data</span>
+        <div class="flex items-center gap-2 text-[11px] text-slate-400">
+          <span>Tips: Klik tombol <strong>G-Messages</strong> untuk membuka asisten pengiriman via Google Messages.</span>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-200/80 dark:border-slate-800 py-6 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400 dark:text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <img src="logo-icon.png" alt="YURA Logo Icon" class="w-5 h-5 object-contain" />
+        <p>© 2026 YURA Reminder System (YRES). Terintegrasi untuk WhatsApp & Google Messages.</p>
+      </div>
+      <p class="flex items-center gap-1">
+        Ditenagai oleh <span class="font-semibold text-slate-600 dark:text-slate-300">SheetJS & Tailwind CSS</span>
+      </p>
+    </div>
+  </footer>
+
+  <script>
+    // State Aplikasi
+    let dataset = [];
+    let currentFilter = 'ALL';
+    const STORAGE_KEY = 'yres_modern_dataset_v2';
+    const TEMPLATE_KEY = 'yres_modern_template_v2';
+    const THEME_KEY = 'yres_theme_mode';
+    
+    const DEFAULT_TEMPLATE = 'Halo {nama}, tagihan kartu {noKartu} sebesar {nominal} belum terselesaikan. Mohon melakukan pembayaran tepat waktu. Terima kasih.';
+
+    // Avatar Color Palette
+    const AVATAR_COLORS = [
+      'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300',
+      'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300',
+      'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300',
+      'bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300',
+      'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300',
+      'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300'
+    ];
+
+    // Template Setup
+    let currentTemplate = localStorage.getItem(TEMPLATE_KEY) || DEFAULT_TEMPLATE;
+    document.getElementById('custom-message-template').value = currentTemplate;
+
+    // Inisialisasi Halaman
+    window.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      initDragAndDrop();
+
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          dataset = JSON.parse(saved);
+          if (dataset.length > 0) {
+            document.getElementById('file-info').textContent = `Tersimpan di browser (${dataset.length} baris)`;
+          }
+          renderTable();
+        } catch (e) {
+          console.error('Error saat parse data:', e);
+        }
+      }
+    });
+
+    // Theme Switcher (Dark / Light)
+    function initTheme() {
+      const savedTheme = localStorage.getItem(THEME_KEY);
+      const isDark = savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+
+    function toggleDarkMode() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
+      showToast(isDark ? 'Mode gelap diaktifkan' : 'Mode terang diaktifkan', 'info');
+    }
+
+    // Drag and Drop Handling
+    function initDragAndDrop() {
+      const dropArea = document.getElementById('drop-area');
+
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropArea.classList.add('border-brand-500', 'bg-brand-50/50', 'dark:bg-brand-950/30');
+        }, false);
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropArea.classList.remove('border-brand-500', 'bg-brand-50/50', 'dark:bg-brand-950/30');
+        }, false);
+      });
+
+      dropArea.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files.length > 0) {
+          handleFile(files[0]);
+        }
+      });
+    }
+
+    // Helper: Simpan data ke local storage
+    function saveDataset() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataset));
+    }
+
+    // Helper: Escape Karakter HTML
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Format Rupiah
+    function formatRupiah(angka) {
+      const num = Number(angka) || 0;
+      return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
+    }
+
+    // Bersihkan nomor handphone (Format internasional Indonesia 62xxx)
+    function cleanPhoneNumber(hp) {
+      let cleaned = String(hp || '').replace(/[^0-9]/g, '');
+      if (cleaned.startsWith('0')) {
+        cleaned = '62' + cleaned.slice(1);
+      } else if (cleaned.startsWith('8')) {
+        cleaned = '62' + cleaned;
+      }
+      return cleaned;
+    }
+
+    // Format avatar inisial
+    function getInitials(name) {
+      const parts = String(name || '').trim().split(' ');
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      return (name ? name.slice(0, 2) : '??').toUpperCase();
+    }
+
+    // Bangun pesan
+    function buildMessage(item) {
+      return currentTemplate
+        .replace(/{nama}/g, item.nama || '-')
+        .replace(/{noKartu}/g, item.noKartu || '-')
+        .replace(/{nominal}/g, formatRupiah(item.nominal));
+    }
+
+    // Sisipkan tag ke textarea template
+    function insertTag(tag) {
+      const textarea = document.getElementById('custom-message-template');
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = textarea.value;
+      textarea.value = text.substring(0, start) + tag + text.substring(end);
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + tag.length;
+      saveTemplate();
+    }
+
+    // Simpan template kustom
+    function saveTemplate() {
+      currentTemplate = document.getElementById('custom-message-template').value.trim() || DEFAULT_TEMPLATE;
+      localStorage.setItem(TEMPLATE_KEY, currentTemplate);
+    }
+
+    function resetTemplateDefault() {
+      currentTemplate = DEFAULT_TEMPLATE;
+      document.getElementById('custom-message-template').value = DEFAULT_TEMPLATE;
+      localStorage.setItem(TEMPLATE_KEY, DEFAULT_TEMPLATE);
+      showToast('Template dikembalikan ke default', 'info');
+      renderTable();
+    }
+
+    // Toast Notification
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const themeColors = {
+        success: 'bg-emerald-600 text-white shadow-emerald-600/20',
+        error: 'bg-rose-600 text-white shadow-rose-600/20',
+        info: 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-slate-900/20',
+        warning: 'bg-amber-600 text-white shadow-amber-600/20'
+      };
+
+      const icons = {
+        success: 'fa-circle-check',
+        error: 'fa-circle-exclamation',
+        info: 'fa-circle-info',
+        warning: 'fa-triangle-exclamation'
+      };
+
+      toast.className = `${themeColors[type] || themeColors.info} pointer-events-auto px-4 py-3 rounded-2xl shadow-xl text-xs font-semibold flex items-center gap-2.5 transform transition-all duration-300 translate-y-3 opacity-0`;
+      toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.info} text-sm"></i> <span>${escapeHtml(message)}</span>`;
+      
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-3', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-3');
+        setTimeout(() => toast.remove(), 300);
+      }, 3200);
+    }
+
+    // Muat Sample Data
+    function loadSampleData() {
+      dataset = [
+        { id: 0, noKartu: '4512-8821-0012', nama: 'Budi Santoso', noHp: '081234567890', nominal: 450000, status: 'Belum' },
+        { id: 1, noKartu: '4512-8821-0045', nama: 'Siti Rahmawati', noHp: '085712345678', nominal: 1250000, status: 'Belum' },
+        { id: 2, noKartu: '4512-8821-0089', nama: 'Ahmad Fauzi', noHp: '087898765432', nominal: 750000, status: 'Selesai' },
+        { id: 3, noKartu: '4512-8821-0103', nama: 'Dewi Lestari', noHp: '089611223344', nominal: 320000, status: 'Belum' },
+        { id: 4, noKartu: '4512-8821-0215', nama: 'Hendra Gunawan', noHp: '082155667788', nominal: 980000, status: 'Selesai' },
+        { id: 5, noKartu: '4512-8821-0301', nama: 'Rina Kusuma', noHp: '081399887766', nominal: 600000, status: 'Belum' }
+      ];
+      document.getElementById('file-info').textContent = 'Data Simulasi Demo (6 baris)';
+      saveDataset();
+      renderTable();
+      showToast('Data contoh berhasil dimuat!', 'success');
+    }
+
+    // Unduh Template Excel
+    function downloadTemplateExcel() {
+      const templateData = [
+        { No_Kartu: '4512-0000-0001', Nama: 'Budi Santoso', No_HP: '081234567890', Nominal: 500000, Status: 'Belum' },
+        { No_Kartu: '4512-0000-0002', Nama: 'Siti Aminah', No_HP: '085712345678', Nominal: 750000, Status: 'Belum' }
+      ];
+      const worksheet = XLSX.utils.json_to_sheet(templateData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Data_Tagihan');
+      XLSX.writeFile(workbook, 'Template_YRES_Tagihan.xlsx');
+      showToast('Template Excel berhasil diunduh.', 'info');
+    }
+
+    // Proses File Excel
+    function prosesExcel() {
+      const fileInput = document.getElementById('excel-file');
+      if (fileInput.files.length > 0) {
+        handleFile(fileInput.files[0]);
+      }
+    }
+
+    function handleFile(file) {
+      if (!file) return;
+      document.getElementById('file-info').textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const rawData = XLSX.utils.sheet_to_json(worksheet);
+
+          if (!rawData || rawData.length === 0) {
+            showToast('File Excel kosong atau format tidak sesuai.', 'error');
+            return;
+          }
+
+          dataset = rawData.map((row, idx) => ({
+            id: idx,
+            noKartu: row.No_Kartu || row['No Kartu'] || row.no_kartu || row.Kartu || '-',
+            nama: row.Nama || row.nama || row.Customer || '-',
+            noHp: row.No_HP || row['No HP'] || row.no_hp || row.Telepon || row.HP || '-',
+            nominal: Number(row.Nominal || row.Tagihan || row.nominal || 0),
+            status: String(row.Status || row.status || 'Belum').trim().toLowerCase() === 'selesai' ? 'Selesai' : 'Belum'
+          }));
+
+          saveDataset();
+          renderTable();
+          showToast(`Berhasil memuat ${dataset.length} pelanggan dari Excel.`, 'success');
+        } catch (err) {
+          console.error(err);
+          showToast('Gagal membaca file Excel.', 'error');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // Set Filter Status Tab
+    function setFilter(status) {
+      currentFilter = status;
+      ['ALL', 'Belum', 'Selesai'].forEach(tab => {
+        const btn = document.getElementById(`tab-${tab}`);
+        if (tab === status) {
+          btn.className = 'filter-tab px-3.5 py-1.5 rounded-xl text-xs font-bold transition bg-white dark:bg-slate-900 shadow-sm text-slate-800 dark:text-white';
+        } else {
+          btn.className = 'filter-tab px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition';
+        }
+      });
+      renderTable();
+    }
+
+    // Bersihkan kata kunci pencarian
+    function clearSearch() {
+      document.getElementById('search-input').value = '';
+      document.getElementById('clear-search-btn').classList.add('hidden');
+      renderTable();
+    }
+
+    // Render Tabel & KPI
+    function renderTable() {
+      const tbody = document.getElementById('table-body');
+      tbody.innerHTML = '';
+
+      updateKPIs();
+
+      const searchInput = document.getElementById('search-input');
+      const searchTerm = searchInput.value.toLowerCase().trim();
+      const clearBtn = document.getElementById('clear-search-btn');
+      
+      if (searchTerm) {
+        clearBtn.classList.remove('hidden');
+      } else {
+        clearBtn.classList.add('hidden');
+      }
+
+      if (dataset.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="text-center py-16 text-slate-400 dark:text-slate-500">
+              <div class="flex flex-col items-center justify-center gap-3">
+                <div class="w-14 h-14 rounded-3xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-2xl text-slate-400">
+                  <i class="fa-solid fa-folder-open"></i>
+                </div>
+                <div>
+                  <p class="font-bold text-slate-700 dark:text-slate-200">Belum Ada Data Tagihan</p>
+                  <p class="text-xs text-slate-400 mt-0.5">Silakan seret file Excel atau klik tombol <strong class="text-brand-600 dark:text-brand-400 cursor-pointer" onclick="loadSampleData()">"Data Contoh"</strong></p>
+                </div>
+              </div>
+            </td>
+          </tr>
+        `;
+        document.getElementById('row-count-info').textContent = 'Menampilkan 0 dari 0 data';
+        return;
+      }
+
+      const filtered = dataset.filter(item => {
+        const matchesStatus = (currentFilter === 'ALL') || (item.status === currentFilter);
+        const matchesSearch = !searchTerm || 
+          String(item.nama).toLowerCase().includes(searchTerm) ||
+          String(item.noKartu).toLowerCase().includes(searchTerm) ||
+          String(item.noHp).toLowerCase().includes(searchTerm);
+        return matchesStatus && matchesSearch;
+      });
+
+      document.getElementById('row-count-info').textContent = `Menampilkan ${filtered.length} dari ${dataset.length} data`;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="text-center py-12 text-slate-400 dark:text-slate-500">
+              <i class="fa-solid fa-magnifying-glass text-xl mb-2 block opacity-50"></i>
+              Tidak ada data yang cocok dengan kriteria filter.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      filtered.forEach((item, index) => {
+        const pesan = buildMessage(item);
+        const encodedPesan = encodeURIComponent(pesan);
+        const formattedHp = cleanPhoneNumber(item.noHp);
+        const isSelesai = item.status === 'Selesai';
+        const colorClass = AVATAR_COLORS[item.id % AVATAR_COLORS.length];
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition duration-150 border-b border-slate-100 dark:border-slate-800/80 group";
+
+        tr.innerHTML = `
+          <td class="py-3.5 px-4 text-center font-mono text-[11px] text-slate-400">${index + 1}</td>
+          
+          <!-- Nama & Avatar -->
+          <td class="py-3.5 px-4">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl ${colorClass} flex items-center justify-center font-bold text-xs tracking-wider shrink-0 shadow-sm">
+                ${getInitials(item.nama)}
+              </div>
+              <div class="font-bold text-slate-800 dark:text-slate-100 text-xs">
+                ${escapeHtml(item.nama)}
+              </div>
+            </div>
+          </td>
+
+          <!-- No Kartu -->
+          <td class="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300">
+            <span class="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-200/60 dark:border-slate-700 text-[11px] font-medium">
+              ${escapeHtml(item.noKartu)}
+            </span>
+          </td>
+
+          <!-- No HP -->
+          <td class="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300">
+            <div class="flex items-center gap-1.5">
+              <span>${escapeHtml(item.noHp)}</span>
+              <button onclick="copyToClipboard('${escapeHtml(item.noHp)}', 'Nomor HP')" title="Salin No HP" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition text-[10px]">
+                <i class="fa-regular fa-copy"></i>
+              </button>
+            </div>
+          </td>
+
+          <!-- Nominal -->
+          <td class="py-3.5 px-4 text-right font-extrabold text-slate-800 dark:text-slate-100">
+            ${formatRupiah(item.nominal)}
+          </td>
+
+          <!-- Status Badge Toggle -->
+          <td class="py-3.5 px-4 text-center">
+            <button onclick="toggleStatus(${item.id})" title="Klik untuk mengubah status" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold cursor-pointer transition select-none active:scale-95 ${
+              isSelesai 
+                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-400 hover:bg-emerald-200' 
+                : 'bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-400 hover:bg-amber-200'
+            }">
+              <span class="w-1.5 h-1.5 rounded-full ${isSelesai ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}"></span>
+              ${escapeHtml(item.status)}
+            </button>
+          </td>
+
+          <!-- Actions: WhatsApp + Google Messages -->
+          <td class="py-3.5 px-6 text-center">
+            <div class="flex items-center justify-center gap-2">
+              
+              <!-- WhatsApp Button -->
+              <a href="https://wa.me/${formattedHp}?text=${encodedPesan}" target="_blank" onclick="markDone(${item.id})" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-sm hover:shadow-emerald-600/30 transition active:scale-95" title="Kirim via WhatsApp Web / App">
+                <i class="fa-brands fa-whatsapp text-sm"></i> <span>WA</span>
+              </a>
+
+              <!-- Google Messages Smart Action Button -->
+              <button onclick="openGoogleMessagesAssistant(${item.id})" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-sm hover:shadow-blue-600/30 transition active:scale-95" title="Kirim via Google Messages (Web / App)">
+                <i class="fa-solid fa-comment-dots text-sm"></i> <span>G-Messages</span>
+              </button>
+
+              <!-- Preview Dialog Button -->
+              <button onclick="openPreviewModal(${item.id})" class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition" title="Lihat Pratinjau Teks">
+                <i class="fa-regular fa-eye text-xs"></i>
+              </button>
+
+              <!-- Copy Message -->
+              <button onclick="copyPesanById(${item.id})" class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition" title="Salin Teks Reminder">
+                <i class="fa-regular fa-copy text-xs"></i>
+              </button>
+            </div>
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Google Messages Assistant Logic
+    let activeGMTarget = null;
+
+    function openGoogleMessagesAssistant(id) {
+      const target = dataset.find(d => d.id === id);
+      if (!target) return;
+      activeGMTarget = target;
+
+      const modal = document.getElementById('google-messages-modal');
+      const card = document.getElementById('gm-modal-card');
+      const nameEl = document.getElementById('gm-customer-name');
+      const phoneEl = document.getElementById('gm-phone-display');
+      const msgEl = document.getElementById('gm-message-display');
+      const nativeBtn = document.getElementById('gm-open-native-btn');
+
+      const msg = buildMessage(target);
+      const encodedMsg = encodeURIComponent(msg);
+      const formattedHp = cleanPhoneNumber(target.noHp);
+
+      nameEl.textContent = `${target.nama}`;
+      phoneEl.textContent = target.noHp;
+      msgEl.textContent = msg;
+
+      // Link native sms: scheme
+      nativeBtn.href = `sms:${formattedHp}?body=${encodedMsg}`;
+
+      // Salin teks otomatis ke clipboard saat tombol ditekan
+      copyToClipboard(msg, 'Teks reminder');
+
+      // Tampilkan modal
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      requestAnimationFrame(() => {
+        card.classList.remove('scale-95', 'opacity-0');
+      });
+    }
+
+    function closeGoogleMessagesModal() {
+      const modal = document.getElementById('google-messages-modal');
+      const card = document.getElementById('gm-modal-card');
+
+      card.classList.add('scale-95', 'opacity-0');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        activeGMTarget = null;
+      }, 200);
+    }
+
+    function handleGMWebClick() {
+      if (activeGMTarget) {
+        markDone(activeGMTarget.id);
+        showToast('Google Messages Web dibuka. Teks pesan sudah disalin, silakan Paste ke kolom chat.', 'info');
+        closeGoogleMessagesModal();
+      }
+    }
+
+    function handleGMNativeClick() {
+      if (activeGMTarget) {
+        markDone(activeGMTarget.id);
+        closeGoogleMessagesModal();
+      }
+    }
+
+    function copyGMPhone() {
+      if (!activeGMTarget) return;
+      copyToClipboard(activeGMTarget.noHp, 'Nomor HP');
+    }
+
+    // Pairing Guide Modal
+    function openPairGuideModal() {
+      const modal = document.getElementById('pair-guide-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closePairGuideModal() {
+      const modal = document.getElementById('pair-guide-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    // Perbarui Statistik & Progress Bar
+    function updateKPIs() {
+      const total = dataset.length;
+      const selesaiList = dataset.filter(d => d.status === 'Selesai');
+      const belumList = dataset.filter(d => d.status !== 'Selesai');
+
+      const selesaiCount = selesaiList.length;
+      const belumCount = belumList.length;
+
+      const nominalSelesai = selesaiList.reduce((acc, cur) => acc + (Number(cur.nominal) || 0), 0);
+      const nominalBelum = belumList.reduce((acc, cur) => acc + (Number(cur.nominal) || 0), 0);
+
+      const percent = total > 0 ? Math.round((selesaiCount / total) * 100) : 0;
+
+      document.getElementById('total-peserta').innerText = total;
+      document.getElementById('total-selesai').innerText = selesaiCount;
+      document.getElementById('total-belum').innerText = belumCount;
+
+      document.getElementById('badge-all').innerText = total;
+      document.getElementById('badge-selesai').innerText = selesaiCount;
+      document.getElementById('badge-belum').innerText = belumCount;
+
+      document.getElementById('nominal-selesai').innerText = formatRupiah(nominalSelesai);
+      document.getElementById('nominal-belum').innerText = formatRupiah(nominalBelum);
+
+      document.getElementById('progress-percent').innerText = `${percent}%`;
+      document.getElementById('progress-bar').style.width = `${percent}%`;
+
+      if (total > 0) {
+        document.getElementById('kpi-total-sub').innerText = `Total tagihan: ${formatRupiah(nominalSelesai + nominalBelum)}`;
+      } else {
+        document.getElementById('kpi-total-sub').innerText = 'Belum ada data';
+      }
+    }
+
+    // Toggle status tunggal
+    function toggleStatus(id) {
+      const target = dataset.find(d => d.id === id);
+      if (target) {
+        target.status = target.status === 'Selesai' ? 'Belum' : 'Selesai';
+        saveDataset();
+        renderTable();
+        showToast(`Status ${target.nama} diubah ke ${target.status}`, 'info');
+      }
+    }
+
+    // Tandai selesai ketika klik link kirim
+    function markDone(id) {
+      const target = dataset.find(d => d.id === id);
+      if (target && target.status !== 'Selesai') {
+        target.status = 'Selesai';
+        saveDataset();
+        setTimeout(() => renderTable(), 250);
+      }
+    }
+
+    // Tandai Semua Selesai sekaligus
+    function markAllCompleted() {
+      if (dataset.length === 0) {
+        showToast('Tidak ada data yang dapat ditandai.', 'warning');
+        return;
+      }
+      const pendingCount = dataset.filter(d => d.status !== 'Selesai').length;
+      if (pendingCount === 0) {
+        showToast('Semua data sudah berstatus Selesai.', 'info');
+        return;
+      }
+      if (confirm(`Apakah Anda ingin menandai seluruh ${pendingCount} pelanggan yang belum selesai menjadi Selesai?`)) {
+        dataset.forEach(item => item.status = 'Selesai');
+        saveDataset();
+        renderTable();
+        showToast('Seluruh pelanggan berhasil ditandai Selesai!', 'success');
+      }
+    }
+
+    // Modal Pratinjau WhatsApp Chat
+    let activePreviewTarget = null;
+
+    function openPreviewModal(id) {
+      const target = dataset.find(d => d.id === id);
+      if (!target) return;
+      activePreviewTarget = target;
+
+      const modal = document.getElementById('preview-modal');
+      const card = document.getElementById('preview-modal-card');
+      const nameEl = document.getElementById('preview-customer-name');
+      const bodyEl = document.getElementById('preview-message-body');
+      const timeEl = document.getElementById('preview-time');
+      const sendBtn = document.getElementById('preview-send-btn');
+
+      const msg = buildMessage(target);
+      const formattedHp = cleanPhoneNumber(target.noHp);
+
+      nameEl.textContent = `${target.nama} (${target.noHp})`;
+      bodyEl.textContent = msg;
+
+      const now = new Date();
+      timeEl.textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+      sendBtn.href = `https://wa.me/${formattedHp}?text=${encodeURIComponent(msg)}`;
+      sendBtn.onclick = () => {
+        markDone(target.id);
+        closePreviewModal();
+      };
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      requestAnimationFrame(() => {
+        card.classList.remove('scale-95', 'opacity-0');
+      });
+    }
+
+    function closePreviewModal() {
+      const modal = document.getElementById('preview-modal');
+      const card = document.getElementById('preview-modal-card');
+
+      card.classList.add('scale-95', 'opacity-0');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        activePreviewTarget = null;
+      }, 200);
+    }
+
+    function copyPreviewText() {
+      if (!activePreviewTarget) return;
+      const text = buildMessage(activePreviewTarget);
+      copyToClipboard(text, 'Teks reminder');
+    }
+
+    // Copy to clipboard helper
+    function copyToClipboard(text, label = 'Teks') {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(`${label} berhasil disalin ke clipboard!`, 'success');
+      }).catch(() => {
+        showToast('Gagal menyalin ke clipboard.', 'error');
+      });
+    }
+
+    function copyPesanById(id) {
+      const target = dataset.find(d => d.id === id);
+      if (!target) return;
+      copyToClipboard(buildMessage(target), 'Teks reminder');
+    }
+
+    // Reset Data
+    function resetData() {
+      if (dataset.length === 0) {
+        showToast('Data saat ini sudah kosong.', 'info');
+        return;
+      }
+      if (confirm('Apakah Anda yakin ingin mengosongkan semua data dari browser?')) {
+        dataset = [];
+        saveDataset();
+        document.getElementById('excel-file').value = '';
+        document.getElementById('file-info').textContent = 'Belum ada file aktif';
+        renderTable();
+        showToast('Data berhasil dikosongkan.', 'info');
+      }
+    }
+
+    // Ekspor Excel
+    function downloadHasil() {
+      if (dataset.length === 0) {
+        showToast('Tidak ada data yang dapat diekspor.', 'warning');
+        return;
+      }
+      const exportData = dataset.map(({ noKartu, nama, noHp, nominal, status }) => ({
+        'No Kartu': noKartu,
+        'Nama': nama,
+        'No HP': noHp,
+        'Nominal': nominal,
+        'Status': status
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Hasil_Reminder");
+      XLSX.writeFile(workbook, `YRES_Export_${new Date().toISOString().slice(0,10)}.xlsx`);
+      showToast('File Excel hasil reminder berhasil diunduh.', 'success');
+    }
+  </script>
+</body>
+</html>
